@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyz
+*.egg-info/
+*.egg
+venv/
+.venv/
+env/
+
+# Environment
+.env
+*.env
+
+# Build outputs
+build/
+dist/
+out/
+
+# Node / React
+node_modules/
+frontend/node_modules/
+frontend/build/
+npm-debug.log*
+yarn-error.log*
+
+# Models & large binary files
+models/
+*.glb
+*.fbx
+*.bin
+*.onnx
+*.pt
+*.pth
+
+# Data (keep structure, ignore content)
+data/*.csv
+data/*.json
+data/*.txt
+
+# Vector DB / FAISS index
+*.faiss
+*.index
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/

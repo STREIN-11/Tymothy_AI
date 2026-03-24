@@ -1,0 +1,218 @@
+{
+	"info": {
+		"_postman_id": "bob-ai-api-collection",
+		"name": "Bob AI API Collection",
+		"description": "Complete API collection for Bob AI Assistant with voice capabilities",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Ask Question",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"question\": \"What is Klutch AI?\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/ask",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"ask"
+					]
+				},
+				"description": "Ask Bob a question and get an answer"
+			},
+			"response": []
+		},
+		{
+			"name": "Teach Bob",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"question\": \"What is the company policy?\",\n    \"answer\": \"Our company follows strict guidelines for employee conduct and maintains high standards.\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/teach",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"teach"
+					]
+				},
+				"description": "Teach Bob new information by providing question-answer pairs"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/status",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"status"
+					]
+				},
+				"description": "Get Bob's current status and capabilities"
+			},
+			"response": []
+		},
+		{
+			"name": "Start Voice Mode",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}"
+				},
+				"url": {
+					"raw": "{{base_url}}/voice/start",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"voice",
+						"start"
+					]
+				},
+				"description": "Start voice wake word detection mode"
+			},
+			"response": []
+		},
+		{
+			"name": "Stop Voice Mode",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}"
+				},
+				"url": {
+					"raw": "{{base_url}}/voice/stop",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"voice",
+						"stop"
+					]
+				},
+				"description": "Stop voice wake word detection mode"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Latest Audio",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/audio/latest",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"audio",
+						"latest"
+					]
+				},
+				"description": "Download the latest audio response file (WAV format)"
+			},
+			"response": []
+		},
+		{
+			"name": "Ask About Company",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"question\": \"How are you?\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/ask",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"ask"
+					]
+				},
+				"description": "Test general conversation with Bob"
+			},
+			"response": []
+		},
+		{
+			"name": "Teach Personal Info",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"question\": \"What is your favorite color?\",\n    \"answer\": \"I like blue because it represents trust and reliability.\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/teach",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"teach"
+					]
+				},
+				"description": "Teach Bob personal preferences"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		}
+	]
+}

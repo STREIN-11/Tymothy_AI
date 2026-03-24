@@ -1,0 +1,37 @@
+=== JAW NODE ===
+{"i":82,"name":"CC_Base_JawRoot","rotation":[-1.6025461491153692e-7,0.000016766387489042245,0.7070925831794739,0.707120954990387],"translation":[1.2663812637329102,2.53767466545105,0.0052183703519403934]}
+{"i":89,"name":"CC_Base_UpperJaw","rotation":[0.00007454584556398913,0.000028207266950630583,0.7071118354797363,0.7071017026901245],"translation":[2.751249074935913,6.522068977355957,0.0058726100251078606]}
+
+=== ANIMATION TRACKS TARGETING JAW ===
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_JawRoot | path: translation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_JawRoot | path: rotation | interpolation: STEP
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_JawRoot | path: scale | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_UpperJaw | path: translation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_UpperJaw | path: rotation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion | node: CC_Base_UpperJaw | path: scale | interpolation: STEP
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_JawRoot | path: translation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_JawRoot | path: rotation | interpolation: STEP
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_JawRoot | path: scale | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_UpperJaw | path: translation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_UpperJaw | path: rotation | interpolation: LINEAR
+anim: T_Website_M_blender_Anim|A|4706850248704_TempMotion_T_Website_M | node: CC_Base_UpperJaw | path: scale | interpolation: STEP
+
+=== ALL TRACK PATHS IN ANIM 0 ===
+  CC_Base_Spine01 -> translation
+  CC_Base_Spine01 -> rotation
+  CC_Base_Spine01 -> scale
+  CC_Base_Spine02 -> translation
+  CC_Base_Spine02 -> rotation
+  CC_Base_Spine02 -> scale
+  CC_Base_NeckTwist01 -> translation
+  CC_Base_NeckTwist01 -> rotation
+  CC_Base_NeckTwist01 -> scale
+  CC_Base_NeckTwist02 -> translation
+  CC_Base_NeckTwist02 -> rotation
+  CC_Base_NeckTwist02 -> scale
+  CC_Base_JawRoot -> translation
+  CC_Base_JawRoot -> rotation
+  CC_Base_JawRoot -> scale
+  CC_Base_UpperJaw -> translation
+  CC_Base_UpperJaw -> rotation
+  CC_Base_UpperJaw -> scale
