@@ -1,4 +1,4 @@
-# Bob - Offline AI Assistant
+# Tymothy - Offline AI Assistant
 
 An offline voice-activated AI assistant that responds to wake words and answers questions based on your custom data.
 
