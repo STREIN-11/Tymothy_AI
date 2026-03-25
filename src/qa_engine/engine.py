@@ -72,6 +72,7 @@ class QAEngine:
             r'\btimor\b': 'tymor',
             r'\btime mode\b': 'tymor',
             r'\btimeo\b': 'tymor',
+            r'\btimeoot tech\b': 'tymor',
             r'\btime of\b': 'tymor',
             r'\btaimer\b': 'tymor',
             r'\btaimer\b': 'tymor',

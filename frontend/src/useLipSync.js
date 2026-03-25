@@ -21,7 +21,7 @@ export function useLipSync() {
 
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 1024;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.smoothingTimeConstant = 0.5;
 
       const source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
@@ -55,19 +55,21 @@ export function useLipSync() {
 
     if (!analyser || !dataArray) return 0;
 
-    analyser.getByteTimeDomainData(dataArray);
+    analyser.getByteFrequencyData(dataArray);
+
+    // Focus on speech frequencies: ~85Hz–3000Hz
+    const sampleRate = analyser.context.sampleRate;
+    const binHz = sampleRate / analyser.fftSize;
+    const lo = Math.floor(85 / binHz);
+    const hi = Math.min(Math.floor(3000 / binHz), dataArray.length - 1);
 
     let sum = 0;
-    for (let i = 0; i < dataArray.length; i += 1) {
-      const normalized = (dataArray[i] - 128) / 128;
-      sum += normalized * normalized;
-    }
+    for (let i = lo; i <= hi; i++) sum += dataArray[i];
+    const avg = sum / (hi - lo + 1);
 
-    const rms = Math.sqrt(sum / dataArray.length);
-
-    let value = rms * 12;
-
-    if (value < 0.02) value = 0;
+    // avg is 0-255; normalize and amplify
+    let value = (avg / 255) * 3.5;
+    if (value < 0.05) value = 0;
     if (value > 1) value = 1;
 
     return value;
