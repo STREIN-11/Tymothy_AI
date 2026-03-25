@@ -4,9 +4,16 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useLipSync } from '../useLipSync';
 
-const JAW_BONE = 'CC_Base_JawRoot';
+const JAW_BONE = 'CC_Base_JawRoot_040';
+
 const BREATHE_SPEED = 0.8;
 const BREATHE_AMP = 0.012;
+
+/**
+ * Turn this on first.
+ * If the face starts moving with this = true,
+ * your morph system is working and audio analysis is the only remaining issue.
+ */
 const DEBUG_FORCE_MOUTH = false;
 
 function normalizeName(value) {
@@ -17,7 +24,7 @@ function collectMorphGroups(dict) {
   const open = [];
   const round = [];
   const wide = [];
-  const idx = {};
+  const idx = {};  // normalized name -> index
 
   Object.keys(dict).forEach((key) => {
     const n = normalizeName(key);
@@ -36,11 +43,20 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
   const group = useRef();
   const spineRef = useRef();
   const jawRef = useRef();
+
+  /**
+   * Each item:
+   * {
+   *   mesh,
+   *   groups: { open: [], round: [], wide: [] }
+   * }
+   */
   const faceMeshesRef = useRef([]);
 
   const smoothOpen = useRef(0);
   const smoothRound = useRef(0);
   const smoothWide = useRef(0);
+  const smoothCheek = useRef(0);
   const blinkTimer = useRef(0);
   const blinkValue = useRef(0);
   const isBlinking = useRef(false);
@@ -50,20 +66,12 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
   const { camera, size } = useThree();
 
   const safeAnimations = useMemo(() => {
-    const FACE_BONES = [
-      'CC_Base_FacialBone', 'CC_Base_Head', 'CC_Base_NeckTwist01', 'CC_Base_NeckTwist02',
-      'CC_Base_JawRoot', 'CC_Base_UpperJaw', 'CC_Base_Teeth01', 'CC_Base_Teeth02',
-      'CC_Base_Tongue01', 'CC_Base_Tongue02', 'CC_Base_Tongue03',
-      'CC_Base_L_Eye', 'CC_Base_R_Eye', 'CC_Base_Spine02',
-    ];
-
     return animations.map((clip) => {
       const cloned = clip.clone();
+      // Only strip jaw bone and morphTargetInfluences — let body bone tracks play
       cloned.tracks = cloned.tracks.filter((track) => {
-        const boneName = track.name.split('.')[0];
+        if (track.name.includes(JAW_BONE)) return false;
         if (track.name.includes('morphTargetInfluences')) return false;
-        if (boneName === 'CC_Base_FacialBone') return false;
-        if (clip.name === 'Talk' && FACE_BONES.some(fb => boneName.startsWith(fb))) return false;
         return true;
       });
       return cloned;
@@ -84,9 +92,9 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
         spineRef.current = node;
       }
 
-      if (!jawRef.current && node.name === 'CC_Base_JawRoot') {
+      if (!jawRef.current && node.name === JAW_BONE) {
         jawRef.current = node;
-        console.log('[Character] jaw found, quaternion:', node.quaternion);
+        console.log('[Character] jaw bone found:', node.name);
       }
 
       if (
@@ -98,42 +106,69 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
         const dict = node.morphTargetDictionary;
         const morphCount = Object.keys(dict).length;
 
+        console.log(
+          '[Character] morph mesh:',
+          node.name,
+          'targets:',
+          morphCount,
+          Object.keys(dict)
+        );
+
+        // keep facial meshes: body/brow (160/188 targets) + teeth + tongue
         const isFaceMesh = morphCount >= 80
           || node.name.startsWith('CC_Base_Teeth')
           || node.name.startsWith('CC_Game_Tongue');
 
         if (isFaceMesh) {
-          faceMeshesRef.current.push({ mesh: node, groups: collectMorphGroups(dict) });
+          const groups = collectMorphGroups(dict);
+
+          faceMeshesRef.current.push({
+            mesh: node,
+            groups,
+          });
+
+          console.log('[Character] selected face mesh:', node.name);
+          console.log('[Character] idx keys:', Object.keys(groups.idx));
         }
       }
     });
 
-    scene.traverse((node) => {
-      if ((node.isMesh || node.isSkinnedMesh) && node.name.toLowerCase().includes('eye')) {
-        const mats = Array.isArray(node.material) ? node.material : [node.material];
-        mats.forEach((mat) => { mat.transparent = false; mat.opacity = 1; });
-      }
-    });
+    if (!faceMeshesRef.current.length) {
+      console.warn('[Character] no usable face meshes found');
+    }
   }, [scene]);
 
   useEffect(() => {
     const keys = Object.keys(actions);
+    console.log('[Character] available animations:', keys);
     if (!keys.length) return;
 
-    const idleAnim = actions['Idle'];
-    const talkAnim = actions['Talk'];
+    const idleAnim   = actions['Kevin|A|2026_3_18_21_44_25'];
+    const talkAnim   = actions['Kevin|A|2026_3_18_21_46_4'];
+    const talkBody   = actions['Kevin|K|Body|2026_3_18_21_46_4'];
+    const talkEye    = actions['Kevin|K|Eye|2026_3_18_21_46_4'];
+    const talkBrow   = actions['Kevin|K|Male_Brow_2|2026_3_18_21_46_4'];
 
     if (isSpeaking) {
       idleAnim?.fadeOut(0.2);
       talkAnim?.reset().fadeIn(0.2).play();
+      talkBody?.reset().fadeIn(0.2).play();
+      talkEye?.reset().fadeIn(0.2).play();
+      talkBrow?.reset().fadeIn(0.2).play();
     } else {
       talkAnim?.fadeOut(0.2);
+      talkBody?.fadeOut(0.2);
+      talkEye?.fadeOut(0.2);
+      talkBrow?.fadeOut(0.2);
       idleAnim?.reset().fadeIn(0.2).play();
     }
 
     return () => {
       idleAnim?.fadeOut(0.1);
       talkAnim?.fadeOut(0.1);
+      talkBody?.fadeOut(0.1);
+      talkEye?.fadeOut(0.1);
+      talkBrow?.fadeOut(0.1);
     };
   }, [actions, isSpeaking]);
 
@@ -152,6 +187,7 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
     const distV = (paddedH / 2) / Math.tan(fovRad / 2);
     const distH = ((bsize.x / 2) / Math.tan((fovRad * aspect) / 2)) * 1.1;
     const dist = Math.max(distV, distH);
+
     const lookY = center.y - bsize.y * 0.25;
 
     camera.position.set(center.x, lookY, dist);
@@ -161,9 +197,7 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
 
   useEffect(() => {
     if (isSpeaking && audioBuffer && audioCtx) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
       startLipSync(audioBuffer, audioCtx);
-      console.log('[Character] startLipSync called, ctx state:', audioCtx.state);
     }
   }, [isSpeaking, audioBuffer, audioCtx, startLipSync]);
 
@@ -172,41 +206,69 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
       faceMeshesRef.current.forEach(({ mesh, groups }) => {
         const influences = mesh?.morphTargetInfluences;
         if (!influences) return;
-        [...groups.open, ...groups.round, ...groups.wide].forEach((i) => {
-          if (i >= 0) influences[i] = 0;
+
+        [...groups.open, ...groups.round, ...groups.wide].forEach((idx) => {
+          if (idx >= 0) influences[idx] = 0;
         });
       });
+
       smoothOpen.current = 0;
       smoothRound.current = 0;
       smoothWide.current = 0;
+      smoothCheek.current = 0;
     }
   }, [isSpeaking]);
 
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
 
-    if (group.current) group.current.rotation.y = Math.sin(t * 0.4) * 0.018;
-    if (spineRef.current) spineRef.current.scale.y = 1 + Math.sin(t * BREATHE_SPEED) * BREATHE_AMP;
-
-    const analyserValue = THREE.MathUtils.clamp(getMouthValue() ?? 0, 0, 1);
-    const raw = DEBUG_FORCE_MOUTH
-      ? ((Math.sin(t * 8) + 1) / 2) * 0.75
-      : analyserValue;
-
-    smoothOpen.current = THREE.MathUtils.lerp(smoothOpen.current, raw, Math.min(1, delta * 25));
-    smoothRound.current = THREE.MathUtils.lerp(smoothRound.current, raw * 0.35, Math.min(1, delta * 18));
-    smoothWide.current = THREE.MathUtils.lerp(smoothWide.current, raw * 0.2, Math.min(1, delta * 18));
-
-
-    if (jawRef.current) {
-      if (!jawRef.current._restQ) {
-        jawRef.current._restQ = jawRef.current.quaternion.clone();
-      }
-      const openAngle = smoothOpen.current * 0.04;
-      const openQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), openAngle);
-      jawRef.current.quaternion.copy(jawRef.current._restQ).multiply(openQ);
+    if (group.current) {
+      group.current.rotation.y = Math.sin(t * 0.4) * 0.018;
     }
 
+    if (spineRef.current) {
+      spineRef.current.scale.y = 1 + Math.sin(t * BREATHE_SPEED) * BREATHE_AMP;
+    }
+
+    const analyserValue = THREE.MathUtils.clamp(getMouthValue() ?? 0, 0, 1);
+
+    // Force visible movement for debugging
+    const forcedValue = DEBUG_FORCE_MOUTH
+      ? ((Math.sin(t * 8) + 1) / 2) * 0.75
+      : 0;
+
+    const raw = DEBUG_FORCE_MOUTH
+      ? forcedValue
+      : Math.max(analyserValue, isSpeaking ? ((Math.sin(t * 10) + 1) / 2) * 0.12 : 0);
+
+    smoothOpen.current = THREE.MathUtils.lerp(
+      smoothOpen.current,
+      raw,
+      Math.min(1, delta * 25)
+    );
+
+    smoothRound.current = THREE.MathUtils.lerp(
+      smoothRound.current,
+      raw * 0.35,
+      Math.min(1, delta * 15)
+    );
+
+    smoothWide.current = THREE.MathUtils.lerp(
+      smoothWide.current,
+      raw * 0.2,
+      Math.min(1, delta * 15)
+    );
+
+    if (jawRef.current) {
+      const targetJaw = isSpeaking ? smoothOpen.current * 0.18 : 0;
+      jawRef.current.rotation.x = THREE.MathUtils.lerp(
+        jawRef.current.rotation.x,
+        targetJaw,
+        Math.min(1, delta * 25)
+      );
+    }
+
+    // Blink every 3-6 seconds
     blinkTimer.current -= delta;
     if (blinkTimer.current <= 0 && !isBlinking.current) {
       isBlinking.current = true;
@@ -219,6 +281,14 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
       blinkValue.current = Math.max(0, blinkValue.current - delta * 12);
     }
 
+    // Cheek: independent pulse when speaking, visible range 0.25-0.45
+    const cheekTarget = isSpeaking ? 0.25 + Math.sin(t * 3.5) * 0.15 : 0;
+    smoothCheek.current = THREE.MathUtils.lerp(
+      smoothCheek.current,
+      cheekTarget,
+      Math.min(1, delta * 4)
+    );
+
     faceMeshesRef.current.forEach(({ mesh, groups }) => {
       const influences = mesh?.morphTargetInfluences;
       if (!influences) return;
@@ -229,22 +299,17 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
       round.forEach((i) => { if (i >= 0) influences[i] = smoothRound.current; });
       wide.forEach((i)  => { if (i >= 0) influences[i] = smoothWide.current; });
 
-      const jawMorph = idx['jawopen'];
-      if (jawMorph !== undefined) influences[jawMorph] = smoothOpen.current;
-
+      // Teeth: V_Open drives teeth open in sync with lips
       const teethI = idx['vopen'];
       if (teethI !== undefined) influences[teethI] = smoothOpen.current;
 
-      ['cheeksuckl','cheeksuckr','cheekpuffl','cheekpuffr',
-       'mouthblowl','mouthblowr','mouthpuckerupl','mouthpuckerupr',
-       'mouthpuckerdownl','mouthpuckerdownr','mouthpressl','mouthpressr',
-       'mouthtightenl','mouthtightenr','mouthstretchl','mouthstretchr',
-       'mouthfrownl','mouthfrownr','mouthsmilel','mouthsmiler'
-      ].forEach((key) => {
-        const i = idx[key];
-        if (i !== undefined) influences[i] = 0;
-      });
+      // Cheek raise
+      const ckL = idx['cheekraisel'];
+      const ckR = idx['cheekraiser'];
+      if (ckL !== undefined) influences[ckL] = smoothCheek.current;
+      if (ckR !== undefined) influences[ckR] = smoothCheek.current;
 
+      // Blink
       const bkL = idx['eyeblinkl'];
       const bkR = idx['eyeblinkr'];
       if (bkL !== undefined) influences[bkL] = blinkValue.current;
