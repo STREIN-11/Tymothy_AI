@@ -75,8 +75,13 @@ class QAEngine:
             r'\btimeoot tech\b': 'tymor',
             r'\btime of\b': 'tymor',
             r'\btaimer\b': 'tymor',
-            r'\btaimer\b': 'tymor',
             r'\bty mor\b': 'tymor',
+            r'\btime at technology\b': 'tymor technology',
+            r'\btime at tech\b': 'tymor technology',
+            r'\btime technology\b': 'tymor technology',
+            r'\btime tech\b': 'tymor technology',
+            r'\biot technology\b': 'tymor technology',
+            r'\biot tech\b': 'tymor technology',
         }
         import re
         for pattern, replacement in corrections.items():

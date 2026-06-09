@@ -7,6 +7,25 @@ export default function MicButton({ onSpeakStart, onTranscript }) {
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
 
+  const correctTranscript = (text) => {
+    return text
+      .replace(/\btime at technology\b/gi, 'Tymor Technology')
+      .replace(/\btime at tech\b/gi, 'Tymor Technology')
+      .replace(/\btime technology\b/gi, 'Tymor Technology')
+      .replace(/\btime tech\b/gi, 'Tymor Technology')
+      .replace(/\btime more\b/gi, 'Tymor')
+      .replace(/\btime or\b/gi, 'Tymor')
+      .replace(/\btimer\b/gi, 'Tymor')
+      .replace(/\btimor\b/gi, 'Tymor')
+      .replace(/\btime mode\b/gi, 'Tymor')
+      .replace(/\btimeo\b/gi, 'Tymor')
+      .replace(/\btime of\b/gi, 'Tymor')
+      .replace(/\btaimer\b/gi, 'Tymor')
+      .replace(/\bty mor\b/gi, 'Tymor')
+      .replace(/\biot technology\b/gi, 'Tymor Technology')
+      .replace(/\biot tech\b/gi, 'Tymor Technology');
+  };
+
   const startRecording = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -42,7 +61,7 @@ export default function MicButton({ onSpeakStart, onTranscript }) {
   };
 
   const submitQuestion = async (text) => {
-    onTranscript?.(text);
+    onTranscript?.(correctTranscript(text));
     try {
       const res = await fetch(`${API}/ask`, {
         method: 'POST',
@@ -59,7 +78,7 @@ export default function MicButton({ onSpeakStart, onTranscript }) {
       const audioCtx = new AudioContext();
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
 
-      onSpeakStart?.(audioBuffer, audioCtx, data.answer);
+      onSpeakStart?.(audioBuffer, audioCtx, correctTranscript(data.answer));
     } catch (err) {
       console.error(err);
     } finally {
