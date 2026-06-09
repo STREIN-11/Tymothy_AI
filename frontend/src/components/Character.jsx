@@ -13,23 +13,20 @@ function normalizeName(value) {
   return value.toLowerCase().replace(/[\s_\-\.]/g, '');
 }
 
+// Only CC4 viseme open morphs — nothing else
+const OPEN_MORPHS = new Set(['vopen', 'vlipopen']);
+
 function collectMorphGroups(dict) {
   const open = [];
-  const round = [];
-  const wide = [];
   const idx = {};
 
   Object.keys(dict).forEach((key) => {
     const n = normalizeName(key);
-    const index = dict[key];
-    idx[n] = index;
-
-    if (n === 'vopen' || n === 'vlipopen') open.push(index);
-    if (n === 'vtighto') round.push(index);
-    if (n === 'vwide') wide.push(index);
+    idx[n] = dict[key];
+    if (OPEN_MORPHS.has(n)) open.push(dict[key]);
   });
 
-  return { open, round, wide, idx };
+  return { open, idx };
 }
 
 export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
@@ -39,15 +36,21 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
   const faceMeshesRef = useRef([]);
 
   const smoothOpen = useRef(0);
-  const smoothRound = useRef(0);
-  const smoothWide = useRef(0);
   const blinkTimer = useRef(0);
   const blinkValue = useRef(0);
   const isBlinking = useRef(false);
 
   const { scene, animations } = useGLTF('/T_Character_Test.glb');
+  const isSpeakingRef = useRef(isSpeaking);
+  const audioBufferRef = useRef(audioBuffer);
+  const audioCtxRef = useRef(audioCtx);
+  useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
+  useEffect(() => { audioBufferRef.current = audioBuffer; }, [audioBuffer]);
+  useEffect(() => { audioCtxRef.current = audioCtx; }, [audioCtx]);
+
   const { startLipSync, getMouthValue } = useLipSync();
   const { camera, size } = useThree();
+  const lastBufferRef = useRef(null);
 
   const safeAnimations = useMemo(() => {
     const FACE_BONES = [
@@ -98,11 +101,12 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
         const dict = node.morphTargetDictionary;
         const morphCount = Object.keys(dict).length;
 
-        const isFaceMesh = morphCount >= 80
+        const isFaceMesh = morphCount >= 1
           || node.name.startsWith('CC_Base_Teeth')
           || node.name.startsWith('CC_Game_Tongue');
 
         if (isFaceMesh) {
+          console.log('[Morphs]', node.name, Object.keys(node.morphTargetDictionary).join(', '));
           faceMeshesRef.current.push({ mesh: node, groups: collectMorphGroups(dict) });
         }
       }
@@ -117,24 +121,26 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
   }, [scene]);
 
   useEffect(() => {
+    const idleAnim = actions['Idle'];
+    if (idleAnim) { idleAnim.reset().play(); }
+  }, [actions]);
+
+  useEffect(() => {
     const keys = Object.keys(actions);
     if (!keys.length) return;
 
     const idleAnim = actions['Idle'];
     const talkAnim = actions['Talk'];
 
-    if (isSpeaking) {
-      idleAnim?.fadeOut(0.2);
-      talkAnim?.reset().fadeIn(0.2).play();
-    } else {
-      talkAnim?.fadeOut(0.2);
-      idleAnim?.reset().fadeIn(0.2).play();
-    }
+    if (!idleAnim || !talkAnim) return;
 
-    return () => {
-      idleAnim?.fadeOut(0.1);
-      talkAnim?.fadeOut(0.1);
-    };
+    if (isSpeaking) {
+      talkAnim.reset().play();
+      idleAnim.crossFadeTo(talkAnim, 0.4, true);
+    } else {
+      idleAnim.reset().play();
+      talkAnim.crossFadeTo(idleAnim, 0.4, true);
+    }
   }, [actions, isSpeaking]);
 
   useEffect(() => {
@@ -160,25 +166,15 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
   }, [scene, size, camera]);
 
   useEffect(() => {
-    if (isSpeaking && audioBuffer && audioCtx) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      startLipSync(audioBuffer, audioCtx);
-      console.log('[Character] startLipSync called, ctx state:', audioCtx.state);
-    }
-  }, [isSpeaking, audioBuffer, audioCtx, startLipSync]);
-
-  useEffect(() => {
     if (!isSpeaking) {
       faceMeshesRef.current.forEach(({ mesh, groups }) => {
         const influences = mesh?.morphTargetInfluences;
         if (!influences) return;
-        [...groups.open, ...groups.round, ...groups.wide].forEach((i) => {
+        [...groups.open].forEach((i) => {
           if (i >= 0) influences[i] = 0;
         });
       });
       smoothOpen.current = 0;
-      smoothRound.current = 0;
-      smoothWide.current = 0;
     }
   }, [isSpeaking]);
 
@@ -189,23 +185,22 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
     if (spineRef.current) spineRef.current.scale.y = 1 + Math.sin(t * BREATHE_SPEED) * BREATHE_AMP;
 
     const analyserValue = THREE.MathUtils.clamp(getMouthValue() ?? 0, 0, 1);
+    const buf = audioBufferRef.current;
+    const ctx = audioCtxRef.current;
+    if (isSpeakingRef.current && buf && ctx && buf !== lastBufferRef.current) {
+      lastBufferRef.current = buf;
+      if (ctx.state === 'suspended') ctx.resume();
+      startLipSync(buf, ctx);
+    }
+    if (Math.floor(t * 2) % 2 === 0 && Math.floor(t * 2) !== Character._lastLog) { Character._lastLog = Math.floor(t * 2); console.log('[LipSync] raw analyser:', analyserValue.toFixed(3), 'smoothOpen:', smoothOpen.current.toFixed(3)); }
     const raw = DEBUG_FORCE_MOUTH
       ? ((Math.sin(t * 8) + 1) / 2) * 0.75
       : analyserValue;
 
-    smoothOpen.current = THREE.MathUtils.lerp(smoothOpen.current, raw, Math.min(1, delta * 25));
-    smoothRound.current = THREE.MathUtils.lerp(smoothRound.current, raw * 0.35, Math.min(1, delta * 18));
-    smoothWide.current = THREE.MathUtils.lerp(smoothWide.current, raw * 0.2, Math.min(1, delta * 18));
+    smoothOpen.current = THREE.MathUtils.lerp(smoothOpen.current, raw * 1.2, Math.min(1, delta * 18));
 
 
-    if (jawRef.current) {
-      if (!jawRef.current._restQ) {
-        jawRef.current._restQ = jawRef.current.quaternion.clone();
-      }
-      const openAngle = smoothOpen.current * 0.04;
-      const openQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), openAngle);
-      jawRef.current.quaternion.copy(jawRef.current._restQ).multiply(openQ);
-    }
+    // jaw driven by morphs only — skip bone rotation to avoid axis skew
 
     blinkTimer.current -= delta;
     if (blinkTimer.current <= 0 && !isBlinking.current) {
@@ -223,27 +218,23 @@ export default function Character({ isSpeaking, audioBuffer, audioCtx }) {
       const influences = mesh?.morphTargetInfluences;
       if (!influences) return;
 
-      const { open, round, wide, idx } = groups;
+      const { open, idx } = groups;
 
+      // zero every mouth morph first
+      ['mouthopen','mouthlipsopen','mouthlipspart','vtighto','mouthpucker','mouthpuckeropen',
+       'vwide','mouthwiden','mouthwidensides','mouthsmile','mouthfrown',
+       'mouthblow','mouthplosive','mouthlipstight','mouthlipstuck',
+       'mouthbottomlipdown','mouthtoplipup','mouthdown','mouthup',
+       'mouthl','mouthr','cheekssuck','cheekblowl','cheekblowr',
+       'movejawdown','movejawl','movejawr'
+      ].forEach((key) => { const i = idx[key]; if (i !== undefined) influences[i] = 0; });
+
+      // only drive V_Open and V_Lip_Open
       open.forEach((i) => { if (i >= 0) influences[i] = smoothOpen.current; });
-      round.forEach((i) => { if (i >= 0) influences[i] = smoothRound.current; });
-      wide.forEach((i)  => { if (i >= 0) influences[i] = smoothWide.current; });
 
-      const jawMorph = idx['jawopen'];
-      if (jawMorph !== undefined) influences[jawMorph] = smoothOpen.current;
-
-      const teethI = idx['vopen'];
-      if (teethI !== undefined) influences[teethI] = smoothOpen.current;
-
-      ['cheeksuckl','cheeksuckr','cheekpuffl','cheekpuffr',
-       'mouthblowl','mouthblowr','mouthpuckerupl','mouthpuckerupr',
-       'mouthpuckerdownl','mouthpuckerdownr','mouthpressl','mouthpressr',
-       'mouthtightenl','mouthtightenr','mouthstretchl','mouthstretchr',
-       'mouthfrownl','mouthfrownr','mouthsmilel','mouthsmiler'
-      ].forEach((key) => {
-        const i = idx[key];
-        if (i !== undefined) influences[i] = 0;
-      });
+      // teeth V_Open
+      const teethOpen = idx['vopen'];
+      if (teethOpen !== undefined) influences[teethOpen] = Math.min(1, smoothOpen.current * 2.0);
 
       const bkL = idx['eyeblinkl'];
       const bkR = idx['eyeblinkr'];
